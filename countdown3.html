@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Countdown-Spiel</title>
+<style>
+    body {
+        background-image: url('hello.png');
+        background-size: cover;
+        background-repeat: no-repeat;
+    }
+
+    button {
+        margin: 5px;
+        position: absolute;
+        width: 60px; /* Verdoppelte Breite */
+        height: 60px; /* Verdoppelte Höhe */
+    }
+
+    #saveButton {
+        width: auto; /* Automatische Breite */
+    }
+
+    #timer {
+        font-size: 24px;
+        font-weight: bold;
+        position: absolute;
+        top: 165px;
+    }
+
+    #leaderboard {
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        padding: 10px;
+        background-color: rgba(128, 128, 128, 0.5); /* Grauer Hintergrund */
+        border-radius: 10px; /* Abgerundete Ecken */
+    }
+
+    #leaderboard h2 {
+        margin-top: 0; /* Kein oberer Abstand für die Überschrift */
+    }
+
+    #leaderboardList {
+        list-style-type: none; /* Keine Listenpunkte */
+        padding: 0; /* Kein Innenabstand */
+    }
+
+    #leaderboardList li {
+        margin-bottom: 5px; /* Ein bisschen Abstand zwischen den Einträgen */
+    }
+
+    #saveButton {
+        position: absolute;
+        top: 140px;
+        right: 20px;
+        display: none; /* Anfangs unsichtbar */
+    }
+
+    #restartButton {
+        position: absolute;
+        top: 200px;
+        right: 20px;
+    }
+</style>
+</head>
+<body>
+    <h1>Countdown-Spiel</h1>
+    <label for="startNumber">Startblock:</label>
+    <input type="number" id="startNumber" value="10" min="1">
+    <label for="divideBy">Aufteilen in:</label>
+    <input type="number" id="divideBy" value="2" min="2">
+    <button id="startButton" onclick="startGame()">Start</button>
+    <div id="gameButtons"></div>
+    <div id="timer">0:00.00</div>
+    <div id="clickRate" style="display: none;">Klickrate: <span id="clicksPerSecond">0</span> pro Sekunde</div>
+    <div id="winnerScreen" style="display: none;">
+        <h2>Gewonnen!</h2>
+        <p>Du hast es in <span id="clicks">0</span> Zügen und <span id="time">0:00.00</span> geschafft.</p>
+        <button onclick="restartGame()">Neues Spiel</button>
+    </div>
+    <div id="leaderboard">
+        <h2>Leaderboard</h2>
+        <ul id="leaderboardList"></ul>
+    </div>
+    <button id="saveButton" onclick="addToLeaderboard()">Speichern</button>
+    <button id="restartButton" onclick="restartGame()">Neues Spiel</button>
+
+    <script>
+        var moves = 0;
+        var remainingButtons = startNumber;
+        var startTime = 0;
+        var timerInterval;
+        var lastClickTime = 0;
+        var leaderboard = [];
+        var saveButtonEnabled = true;
+
+        function startGame() {
+            var startNumber = parseInt(document.getElementById('startNumber').value);
+            if (!isNaN(startNumber) && startNumber >= 1) {
+                createButton(startNumber, getRandomPosition());
+                remainingButtons = 1;
+                document.getElementById('startButton').style.display = 'none';
+                startTime = new Date().getTime();
+                timerInterval = setInterval(updateTimer, 10); // Aktualisiert die Stoppuhr alle 10 Millisekunden
+            } else {
+                alert("Bitte geben Sie eine gültige Startzahl ein (größer oder gleich 1).");
+            }
+        }
+
+        function createButton(number, position) {
+  var buttonDiv = document.getElementById('gameButtons');
+  var button = document.createElement('button');
+  button.textContent = number;
+  button.style.left = position.x + 'px';
+  button.style.top = position.y + 'px';
+  button.onclick = function() {
+      var divideBy = parseInt(document.getElementById('divideBy').value);
+      if (!isNaN(divideBy) && divideBy >= 2) {
+          createButtons(number, divideBy);
+          this.remove();
+          moves++;
+          updateClicks();
+          updateClickRate();
+      } else {
+          alert("Bitte geben Sie eine gültige Zahl größer oder gleich 2 ein.");
+      }
+  };
+  buttonDiv.appendChild(button);
+  remainingButtons++; // Changed from += to ++
+}
+
+function createButtons(number, divideBy) {
+  for (var i = 0; i < divideBy; i++) {
+      var newNumber = number - 1; 
+      if (newNumber >= 1) {
+          createButton(newNumber, getRandomPosition());
+      }
+  }
+  remainingButtons--; // Changed from -= to --
+  if (remainingButtons <= 0) { 
+      clearInterval(timerInterval);
+      document.getElementById('winnerScreen').style.display = 'block';
+      updateResults();
+      document.getElementById('clickRate').style.display = 'none';
+      if (saveButtonEnabled) {
+          document.getElementById('saveButton').style.display = 'block';
+      }
+  }
+}
+
+
+
+
+        function updateClicks() {
+            document.getElementById('clicks').textContent = moves;
+        }
+
+        function updateClickRate() {
+            var currentTime = new Date().getTime();
+            var elapsedTime = (currentTime - startTime) / 1000; // Umwandlung in Sekunden
+            var clicksPerSecond = moves / elapsedTime;
+            document.getElementById('clickRate').style.display = 'block';
+            document.getElementById('clicksPerSecond').textContent = clicksPerSecond.toFixed(2);
+        }
+
+        function updateTimer() {
+            var currentTime = new Date().getTime();
+            var elapsedTime = currentTime - startTime;
+            var minutes = Math.floor((elapsedTime % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((elapsedTime % (1000 * 60)) / 1000);
+            var milliseconds = Math.floor((elapsedTime % 1000) / 10);
+            document.getElementById('timer').textContent = (minutes < 10 ? '0' : '') + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + '.' + (milliseconds < 10 ? '0' : '') + milliseconds;
+        }
+
+        function updateResults() {
+            var currentTime = new Date().getTime();
+            var elapsedTime = currentTime - startTime;
+            var minutes = Math.floor((elapsedTime % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((elapsedTime % (1000 * 60)) / 1000);
+            var milliseconds = Math.floor((elapsedTime % 1000) / 10);
+            document.getElementById('time').textContent = (minutes < 10 ? '0' : '') + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + '.' + (milliseconds < 10 ? '0' : '') + milliseconds;
+            var elapsedTimeInSeconds = elapsedTime / 1000;
+            var clicksPerSecond = moves / elapsedTimeInSeconds;
+            document.getElementById('clicksPerSecond').textContent = clicksPerSecond.toFixed(2);
+        }
+
+        function restartGame() {
+            clearInterval(timerInterval);
+            document.getElementById('winnerScreen').style.display = 'none';
+            document.getElementById('gameButtons').innerHTML = '';
+            moves = 0;
+            remainingButtons = 0;
+            startTime = 0;
+            document.getElementById('startButton').style.display = 'inline-block';
+            document.getElementById('timer').textContent = '0:00.00';
+            document.getElementById('clickRate').style.display = 'none';
+            lastClickTime = 0;
+            document.getElementById('saveButton').style.display = 'none';
+            saveButtonEnabled = true;
+        }
+
+        function getRandomPosition() {
+            var maxWidth = window.innerWidth - 100; // Subtrahiere 100, um sicherzustellen, dass der Button nicht am Rand des Bildschirms liegt
+            var maxHeight = window.innerHeight - 100; // Subtrahiere 100, um sicherzustellen, dass der Button nicht am Rand des Bildschirms liegt
+            var randomX = Math.floor(Math.random() * maxWidth);
+            var randomY = Math.floor(Math.random() * maxHeight);
+            return { x: randomX, y: randomY };
+        }
+
+        function addToLeaderboard() {
+            var name = prompt("Bitte gib deinen Namen ein:");
+            if (name !== null && name !== "") {
+                var time = document.getElementById('time').textContent;
+                var clicks = document.getElementById('clicks').textContent;
+                var entry = { name: name, time: time, clicks: clicks };
+                leaderboard.push(entry);
+                updateLeaderboard();
+                saveButtonEnabled = false;
+                document.getElementById('saveButton').style.display = 'none';
+            }
+        }
+
+function updateLeaderboard() {
+    leaderboard.sort(function(a, b) {
+        if (parseInt(a.clicks) !== parseInt(b.clicks)) {
+            return parseInt(b.clicks) - parseInt(a.clicks); // Sortiere nach absteigender Klickanzahl
+        } else {
+            return parseInt(a.time) - parseInt(b.time); // Sortiere nach aufsteigender Zeit, wenn die Klickanzahl gleich ist
+        }
+    });
+
+    var leaderboardList = document.getElementById('leaderboardList');
+    leaderboardList.innerHTML = '';
+    for (var i = 0; i < leaderboard.length; i++) {
+        var entry = leaderboard[i];
+        var listItem = document.createElement('li');
+        listItem.textContent = entry.name + ' - ' + entry.time + ' - ' + entry.clicks + ' Klicks';
+        leaderboardList.appendChild(listItem);
+    }
+}
+
+    </script>
+</body>
+</html>
